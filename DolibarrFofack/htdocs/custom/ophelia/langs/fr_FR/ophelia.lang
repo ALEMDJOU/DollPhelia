@@ -1,0 +1,91 @@
+# Copyright (C) 2026 Ophelia
+# Ophelia module translations (fr_FR)
+
+ModuleOpheliaName=Ophelia
+ModuleOpheliaDesc=Extraction automatique de donnees documentaires (OCR, appariement de templates, extraction spatiale et IA)
+
+OpheliaDocuments=Documents
+OpheliaDocument=Document
+OpheliaNewDocument=Nouveau document
+OpheliaTemplates=Templates
+OpheliaTemplate=Template
+OpheliaNewTemplate=Nouveau template
+OpheliaEditTemplate=Modifier le template
+OpheliaManageFields=Gerer les champs
+OpheliaStrategies=Strategies
+OpheliaNewStrategy=Nouvelle strategie
+OpheliaStrategyCode=Code strategie
+OpheliaStrategyUsed=Strategie utilisee
+OpheliaPriority=Priorite
+
+OpheliaStatusUploaded=Televerse
+OpheliaStatusProcessing=En cours de traitement
+OpheliaStatusProcessed=Traite
+OpheliaStatusValidated=Valide
+
+OpheliaResultRaw=Brut
+OpheliaResultValidated=Valide
+OpheliaResultExported=Exporte
+
+OpheliaFileToUpload=Fichier a televerser
+OpheliaFileName=Nom du fichier
+OpheliaFileSize=Taille du fichier
+OpheliaErrorNoFileSelected=Aucun fichier selectionne
+OpheliaErrorUpload=Erreur lors du televersement du fichier
+
+OpheliaLaunchProcessing=Lancer le traitement
+OpheliaProcessingInProgress=Traitement en cours...
+OpheliaProcessingDone=Traitement termine
+OpheliaWaitingForProcessing=En attente du traitement OCR / appariement / extraction...
+OpheliaViewExtraction=Voir l'extraction
+OpheliaErrorApi=Erreur du service Ophelia
+
+OpheliaMatchingScore=Score d'appariement
+OpheliaVersion=Version
+
+OpheliaTemplateFields=Champs du template
+OpheliaFieldName=Nom du champ
+OpheliaFieldLabel=Libelle du champ
+OpheliaFieldType=Type de champ
+OpheliaKeyText=Texte cle (ancre)
+OpheliaDeltaX=Delta X
+OpheliaDeltaY=Delta Y
+OpheliaRelationType=Type de relation
+OpheliaExtractionMethod=Methode d'extraction
+OpheliaRequired=Obligatoire
+OpheliaAddField=Ajouter un champ
+
+OpheliaExtractionResults=Resultats d'extraction
+OpheliaNoExtractionYet=Aucune extraction disponible pour ce document
+OpheliaGlobalConfidence=Confiance globale
+OpheliaExtractedValue=Valeur extraite
+OpheliaCorrectedValue=Valeur corrigee
+OpheliaConfidenceOcr=Confiance OCR
+OpheliaConfidenceSpatial=Confiance spatiale
+OpheliaConfidenceTotal=Confiance totale
+OpheliaValidateExtraction=Valider l'extraction
+OpheliaValidationDone=Extraction validee avec succes
+OpheliaGoToExport=Aller a l'export
+
+OpheliaExport=Export
+OpheliaPreview=Apercu avant export
+OpheliaExportJson=Exporter en JSON
+OpheliaExportXml=Exporter en XML
+OpheliaExportHistory=Historique des exports
+OpheliaExportFormat=Format
+OpheliaErrorNotValidated=Le resultat doit etre valide avant d'etre exporte
+
+OpheliaSetup=Configuration d'Ophelia
+OpheliaApiUrl=URL du microservice Ophelia
+OpheliaMatchingThreshold=Seuil minimal de correspondance
+OpheliaOcrLang=Langue OCR par defaut
+OpheliaOcrLangHelp=code Tesseract, ex: eng, fra
+OpheliaTestConnection=Tester la connexion
+OpheliaConnectionOk=Connexion reussie
+OpheliaConnectionFailed=Echec de la connexion
+
+DateUpload=Date de televersement
+DateProcessing=Date de traitement
+DateValidation=Date de validation
+DateExtraction=Date d'extraction
+DocType=Type de document

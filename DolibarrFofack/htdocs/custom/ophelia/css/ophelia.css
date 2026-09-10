@@ -1,0 +1,159 @@
+/* Ophelia module stylesheet
+   Dominant theme: bordeaux (#800020) + light pink accent (#FFCCCC).
+   Scoped under .ophelia-app so it only repaints Ophelia's own pages,
+   not the rest of Dolibarr. */
+
+.ophelia-app {
+	--ophelia-bordeaux: #800020;
+	--ophelia-bordeaux-dark: #5c0017;
+	--ophelia-pink: #ffcccc;
+}
+
+/* Page title / picto */
+.ophelia-app .titre,
+.ophelia-app .fiche_titre {
+	color: var(--ophelia-bordeaux);
+}
+
+/* Tab bar (Fiche / Champs du template / ...) */
+.ophelia-app div.tabBar,
+.ophelia-app .tabBar {
+	border-top: 3px solid var(--ophelia-bordeaux);
+}
+.ophelia-app a.tabTitle,
+.ophelia-app a.tabunactive {
+	color: var(--ophelia-bordeaux-dark);
+}
+.ophelia-app a.tabactive,
+.ophelia-app li.tabactive a {
+	background-color: var(--ophelia-pink);
+	color: var(--ophelia-bordeaux-dark);
+	border-color: var(--ophelia-bordeaux);
+	font-weight: bold;
+}
+
+/* Underbanner (section separators on cards) */
+.ophelia-app .underbanner {
+	border-bottom: 2px solid var(--ophelia-bordeaux);
+}
+
+/* List headers */
+.ophelia-app tr.liste_titre td,
+.ophelia-app tr.liste_titre th {
+	background-color: var(--ophelia-pink);
+	color: var(--ophelia-bordeaux-dark);
+	border-bottom: 2px solid var(--ophelia-bordeaux);
+}
+
+/* Action buttons (Enregistrer, Lancer le traitement, Valider...) */
+.ophelia-app .butAction,
+.ophelia-app a.butAction,
+.ophelia-app input[type="submit"].button,
+.ophelia-app button.button {
+	background-color: var(--ophelia-bordeaux) !important;
+	border-color: var(--ophelia-bordeaux-dark) !important;
+	color: #fff !important;
+}
+.ophelia-app .butAction:hover,
+.ophelia-app a.butAction:hover,
+.ophelia-app input[type="submit"].button:hover,
+.ophelia-app button.button:hover {
+	background-color: var(--ophelia-bordeaux-dark) !important;
+}
+.ophelia-app .butActionDelete {
+	background-color: #ffffff !important;
+	border: 1px solid var(--ophelia-bordeaux) !important;
+	color: var(--ophelia-bordeaux) !important;
+}
+
+/* Status badges reuse Dolibarr's dolGetStatus() markup; give the "validated"
+   pill a bordeaux tint instead of the default theme color */
+.ophelia-app .status4 {
+	background-color: var(--ophelia-pink);
+	color: var(--ophelia-bordeaux-dark);
+}
+
+.ophelia-confidence-high {
+	color: #1c7c3f;
+	font-weight: bold;
+}
+
+.ophelia-confidence-medium {
+	color: #b3811b;
+	font-weight: bold;
+}
+
+.ophelia-confidence-low {
+	color: #c9312b;
+	font-weight: bold;
+}
+
+.ophelia-progress-wrapper {
+	width: 300px;
+	background: var(--ophelia-pink, #ffcccc);
+	border-radius: 4px;
+	overflow: hidden;
+	height: 18px;
+	margin: 10px 0;
+}
+
+.ophelia-progress-bar {
+	height: 18px;
+	background: var(--ophelia-bordeaux, #800020);
+	width: 0%;
+	transition: width 0.4s ease;
+	text-align: center;
+	color: #fff;
+	font-size: 11px;
+	line-height: 18px;
+}
+
+.ophelia-status-message {
+	margin-top: 6px;
+	font-style: italic;
+	color: #666;
+}
+
+.ophelia-field-row.ophelia-field-low {
+	background-color: #fdecea;
+}
+
+.ophelia-field-row.ophelia-field-medium {
+	background-color: #fdf3d8;
+}
+
+.ophelia-bbox-preview {
+	max-width: 100%;
+	border: 1px solid #ccc;
+}
+
+/* Export preview panel */
+.ophelia-preview-box {
+	background: #fff;
+	border: 1px solid var(--ophelia-bordeaux, #800020);
+	border-radius: 4px;
+	padding: 15px;
+	max-width: 100%;
+	overflow-x: auto;
+	text-align: left;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: monospace;
+	font-size: 12px;
+}
+
+.ophelia-preview-tabs a {
+	display: inline-block;
+	padding: 6px 16px;
+	margin-right: 4px;
+	border: 1px solid var(--ophelia-bordeaux, #800020);
+	border-bottom: none;
+	border-radius: 4px 4px 0 0;
+	color: var(--ophelia-bordeaux-dark, #5c0017);
+	text-decoration: none;
+}
+
+.ophelia-preview-tabs a.active {
+	background-color: var(--ophelia-pink, #ffcccc);
+	font-weight: bold;
+}

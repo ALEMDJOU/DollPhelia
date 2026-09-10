@@ -1,0 +1,47 @@
+# ============================================================
+#  DollPhelia — .gitignore
+# ============================================================
+
+# --- OS / editor junk ---
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# ============================================================
+#  ophelia-service (Python / FastAPI)
+# ============================================================
+ophelia-service/venv/
+ophelia-service/puis/
+ophelia-service/.venv/
+ophelia-service/__pycache__/
+ophelia-service/**/__pycache__/
+ophelia-service/*.pyc
+ophelia-service/.pytest_cache/
+ophelia-service/.env
+ophelia-service/*.log
+ophelia-service/uvicorn_stdout.log
+ophelia-service/celery_stdout.log
+
+# Downloaded / converted ML model weights (large binaries — keep out of git)
+ophelia-service/models_cache/
+
+# ============================================================
+#  DolibarrFofack — this repo tracks ONLY the Ophelia module
+#  (the actual project deliverable), not the vendored Dolibarr
+#  core (~274 MB of upstream ERP source we didn't write).
+#  Whitelist chain: ignore everything under DolibarrFofack/,
+#  then re-allow the path down to htdocs/custom/ophelia/.
+# ============================================================
+DolibarrFofack/*
+!DolibarrFofack/htdocs
+DolibarrFofack/htdocs/*
+!DolibarrFofack/htdocs/custom
+DolibarrFofack/htdocs/custom/*
+!DolibarrFofack/htdocs/custom/ophelia
+
+# --- Misc scratch/test artifacts ---
+scratch_test/
+*.tmp
