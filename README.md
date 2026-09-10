@@ -110,14 +110,9 @@ Consultez [CONTRIBUTING.md]([LIEN_CONTRIBUTING]) pour les détails (à créer si
 
 *Une idée à ajouter ? [Ouvrez une issue]([LIEN_ISSUES]).*
 
-## 📄 Licence
-
-Distribué sous licence [[TON_CHOIX_DE_LICENCE], ex: GPL-3.0]. Voir [`LICENSE`](LICENSE) pour plus de détails.
-
----
 
 <div align="center">
 
-Construit avec ❤️ autour de [Dolibarr](https://www.dolibarr.org/) — projet initialement né dans le cadre d'un mémoire de master (ENSPY, Yaoundé, Cameroun).
+Construit avec ❤️ autour de [Dolibarr](https://www.dolibarr.org/) — projet initialement né dans le cadre d'un Stage Pré-ingénieur a Stevo Digital (ENSPY, Yaoundé, Cameroun).
 
 </div>
