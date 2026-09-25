@@ -36,8 +36,10 @@ Ressaisir à la main les données d'une facture, d'un RIB ou d'un KBIS dans son 
 
 ## Fonctionnalités
 
-- Upload de documents directement depuis Dolibarr (factures, CV, KBIS, RIB, ...)
-- Templates configurables — définissez des ancres textuelles et des vecteurs spatiaux par type de document
+- Upload de documents directement depuis Dolibarr (images, PDF, DOCX, XLSX : factures, CV, KBIS, RIB, ...)
+- Téléchargement et prévisualisation des documents depuis leur fiche
+- Templates configurables — définissez des ancres textuelles et des vecteurs spatiaux par type de document, avec gestion de version et template par défaut par type
+- Test d'un template sur un document réel avant de le mettre en production, sans rien enregistrer
 - OCR et appariement automatique contre vos templates actifs, avec score de correspondance
 - Extraction spatiale, IA (LayoutLMv3) ou NER par règles, selon ce qui est disponible et pertinent pour le document
 - Scores de confiance par champ (OCR × spatial × validation) pour prioriser la relecture
