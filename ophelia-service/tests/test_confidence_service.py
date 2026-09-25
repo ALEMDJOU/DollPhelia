@@ -9,7 +9,8 @@ import pytest
 
 from app.config import settings
 from app.models.schemas import BBoxSchema, TextElementSchema, TemplateFieldSchema
-from app.services.confidence_service import compute_confidence, _validate_by_type
+from app.services.confidence_service import compute_confidence
+from app.services.ner_service import classify_value
 
 
 def _field(field_type: str) -> TemplateFieldSchema:
@@ -68,4 +69,4 @@ def test_c_spatial_decroit_avec_la_distance():
     ],
 )
 def test_validate_by_type(field_type, value, attendu):
-    assert _validate_by_type(field_type, value) == attendu
+    assert classify_value(field_type, value) == attendu

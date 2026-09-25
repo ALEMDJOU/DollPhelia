@@ -6,6 +6,7 @@ Le worker est lancé séparément du serveur FastAPI.
 from __future__ import annotations
 
 from celery import Celery
+from celery.signals import worker_process_init
 
 from app.config import settings
 from app.models.schemas import TemplateSchema
@@ -26,8 +27,22 @@ celery_app.conf.update(
 )
 
 
+@worker_process_init.connect
+def _load_model_on_worker_start(**kwargs):
+    """
+    Le worker Celery tourne dans un processus séparé du serveur FastAPI :
+    le singleton du modèle LayoutLMv3 (app/ml/layoutlm_loader.py) n'y est
+    donc jamais initialisé par le lifespan de FastAPI, et la stratégie de
+    repli IA échoue silencieusement (0 champ extrait) pour toute tâche
+    traitée en asynchrone. On charge le modèle une fois par processus
+    worker, au démarrage, de la même façon que le fait main.py pour uvicorn.
+    """
+    from app.ml.layoutlm_loader import load_model
+    load_model()
+
+
 @celery_app.task(bind=True, name="ophelia.process_document")
-def process_document_task(self, filepath: str, templates: list[dict], lang: str = "fra"):
+def process_document_task(self, filepath: str, templates: list[dict], lang: str = "fra", strategy: str = "auto"):
     """
     Tâche asynchrone de traitement complet d'un document.
     Met à jour le statut à chaque étape pour permettre le polling côté PHP.
@@ -54,6 +69,7 @@ def process_document_task(self, filepath: str, templates: list[dict], lang: str 
         filepath=filepath,
         templates=template_objects,
         lang=lang,
+        strategy=strategy,
     )
 
     # Progression : Terminé

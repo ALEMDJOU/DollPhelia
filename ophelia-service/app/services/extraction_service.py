@@ -93,6 +93,7 @@ def _extract_single_field(
         center_y=expected_y,
         radius=sigma * 3,  # 3σ couvre 99.7 % de la distribution
         exclude_text=field_def.key_text,
+        exclude_bbox=key_element.bbox,
     )
 
     if not candidates:

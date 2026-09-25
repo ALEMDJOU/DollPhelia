@@ -8,8 +8,7 @@ import tempfile
 import shutil
 
 from app.models.schemas import OcrRequest, OcrResponse
-from app.services.ocr_service import extract_text_elements
-from app.services.preprocessing import preprocess_image
+from app.services.document_loader import load_elements
 
 router = APIRouter()
 
@@ -17,29 +16,23 @@ router = APIRouter()
 @router.post("/extract", response_model=OcrResponse)
 async def extract_ocr(request: OcrRequest):
     """
-    Extrait les éléments textuels localisés d'un document.
+    Extrait les éléments textuels localisés d'un document — image, PDF
+    (texte natif ou OCR de repli pour les pages scannées), DOCX ou XLSX.
     Correspond à la production des triplets (texte, bbox, confiance)
-    de la Définition 4.3 du mémoire.
+    de la Définition 4.3 du mémoire (confiance = 1.0 pour le texte natif
+    d'un PDF/DOCX/XLSX, qui n'a pas d'incertitude de reconnaissance).
     """
     filepath = Path(request.filepath)
     if not filepath.exists():
         raise HTTPException(status_code=404, detail=f"Fichier introuvable : {filepath}")
 
     try:
-        # Prétraitement de l'image
-        processed_images = preprocess_image(filepath)
-
-        # OCR sur chaque page
-        all_elements = []
-        for page_num, image in enumerate(processed_images, start=1):
-            elements = extract_text_elements(image, lang=request.lang)
-            for elem in elements:
-                elem.page_num = page_num
-            all_elements.extend(elements)
+        all_elements = load_elements(filepath, lang=request.lang)
+        num_pages = max((e.page_num for e in all_elements), default=1)
 
         return OcrResponse(
             filepath=str(filepath),
-            num_pages=len(processed_images),
+            num_pages=num_pages,
             elements=all_elements,
         )
 
@@ -61,18 +54,12 @@ async def extract_ocr_upload(
         tmp_path = Path(tmp.name)
 
     try:
-        processed_images = preprocess_image(tmp_path)
-
-        all_elements = []
-        for page_num, image in enumerate(processed_images, start=1):
-            elements = extract_text_elements(image, lang=lang)
-            for elem in elements:
-                elem.page_num = page_num
-            all_elements.extend(elements)
+        all_elements = load_elements(tmp_path, lang=lang)
+        num_pages = max((e.page_num for e in all_elements), default=1)
 
         return OcrResponse(
             filepath=str(tmp_path),
-            num_pages=len(processed_images),
+            num_pages=num_pages,
             elements=all_elements,
         )
     finally:

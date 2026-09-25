@@ -2,6 +2,10 @@
 #  DollPhelia — .gitignore
 # ============================================================
 
+# --- Internal project instructions, not for the public repo ---
+CLAUDE.md
+**/CLAUDE.md
+
 # --- OS / editor junk ---
 Thumbs.db
 desktop.ini

@@ -29,7 +29,7 @@ def preprocess_image(filepath: Path) -> list[np.ndarray]:
     else:
         raise ValueError(f"Format non supporté : {suffix}")
 
-    return [_enhance(img) for img in images]
+    return [enhance_image(img) for img in images]
 
 
 def _load_pdf_pages(filepath: Path) -> list[np.ndarray]:
@@ -48,7 +48,7 @@ def _load_pdf_pages(filepath: Path) -> list[np.ndarray]:
         return [np.array(pil_img)[:, :, ::-1]]
 
 
-def _enhance(image: np.ndarray) -> np.ndarray:
+def enhance_image(image: np.ndarray) -> np.ndarray:
     """
     Pipeline d'amélioration :
     1. Conversion en niveaux de gris

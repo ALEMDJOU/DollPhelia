@@ -107,6 +107,20 @@ class ApiOphelia
 	}
 
 	/**
+	 * POST /api/v1/ner/extract
+	 * Reconnaissance d'entites nommees (dates, montants, IBAN, emails,
+	 * telephones, pourcentages, SIRET, personnes, organisations) sur des
+	 * elements OCR deja extraits, sans template.
+	 *
+	 * @param array $elements List of TextElementSchema arrays
+	 * @return array            NerResponse
+	 */
+	public function extractEntities(array $elements)
+	{
+		return $this->callApi('ner/extract', array('elements' => $elements));
+	}
+
+	/**
 	 * POST /api/v1/matching/match
 	 *
 	 * @param array       $elements List of TextElementSchema arrays
@@ -152,14 +166,16 @@ class ApiOphelia
 	 * @param string $filepath  Absolute path to the file
 	 * @param array  $templates List of TemplateSchema arrays
 	 * @param string $lang      Tesseract language code
+	 * @param string $strategy  'auto' (default) | 'template_matching' | 'ai_layoutlm' | 'ner'
 	 * @return string             Task id
 	 */
-	public function startProcessing($filepath, array $templates, $lang = 'eng')
+	public function startProcessing($filepath, array $templates, $lang = 'eng', $strategy = 'auto')
 	{
 		$r = $this->callApi('extraction/process/start', array(
 			'filepath' => $filepath,
 			'templates' => $templates,
 			'lang' => $lang,
+			'strategy' => $strategy,
 		));
 
 		return $r['task_id'];
@@ -183,14 +199,16 @@ class ApiOphelia
 	 * @param string $filepath  Absolute path to the file
 	 * @param array  $templates List of TemplateSchema arrays
 	 * @param string $lang      Tesseract language code
+	 * @param string $strategy  'auto' (default) | 'template_matching' | 'ai_layoutlm' | 'ner'
 	 * @return array              ExtractionResponse (full pipeline result)
 	 */
-	public function processSync($filepath, array $templates, $lang = 'eng')
+	public function processSync($filepath, array $templates, $lang = 'eng', $strategy = 'auto')
 	{
 		return $this->callApi('extraction/process/sync', array(
 			'filepath' => $filepath,
 			'templates' => $templates,
 			'lang' => $lang,
+			'strategy' => $strategy,
 		));
 	}
 }

@@ -33,7 +33,7 @@ def find_key_in_elements(
     Tesseract tokenise mot par mot : une clé de template à plusieurs mots
     (ex: "Montant TTC:") n'apparaît donc jamais comme un seul élément OCR.
     On reconstitue des candidats multi-mots à partir des éléments voisins
-    sur une même ligne (cf. _build_phrase_candidates) avant la recherche.
+    sur une même ligne (cf. build_phrase_candidates) avant la recherche.
 
     Retourne l'élément le plus similaire au-dessus du seuil,
     ou None si aucune correspondance n'est trouvée.
@@ -42,7 +42,7 @@ def find_key_in_elements(
     best_match = None
     best_score = 0.0
 
-    candidates = list(elements) + _build_phrase_candidates(elements)
+    candidates = list(elements) + build_phrase_candidates(elements)
 
     for element in candidates:
         elem_text = element.text.lower().strip()
@@ -103,7 +103,7 @@ def _merge_elements(group: list[TextElementSchema]) -> TextElementSchema:
     )
 
 
-def _build_phrase_candidates(
+def build_phrase_candidates(
     elements: list[TextElementSchema],
     max_words: int = 4,
     max_gap_ratio: float = 1.5,
@@ -142,24 +142,58 @@ def _build_phrase_candidates(
     return phrases
 
 
+def bbox_overlap_ratio(a: BBoxSchema, b: BBoxSchema) -> float:
+    """
+    Ratio de recouvrement entre deux boîtes englobantes, relatif à l'aire
+    de la plus petite : aire(a ∩ b) / min(aire(a), aire(b)).
+    Renvoie 0.0 si les boîtes ne se recouvrent pas ou si l'une est vide.
+    """
+    ix1, iy1 = max(a.x1, b.x1), max(a.y1, b.y1)
+    ix2, iy2 = min(a.x2, b.x2), min(a.y2, b.y2)
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+
+    inter_area = (ix2 - ix1) * (iy2 - iy1)
+    area_a = max(0, a.x2 - a.x1) * max(0, a.y2 - a.y1)
+    area_b = max(0, b.x2 - b.x1) * max(0, b.y2 - b.y1)
+    min_area = min(area_a, area_b)
+    if min_area <= 0:
+        return 0.0
+
+    return inter_area / min_area
+
+
 def elements_in_search_zone(
     elements: list[TextElementSchema],
     center_x: float,
     center_y: float,
     radius: float,
     exclude_text: str | None = None,
+    exclude_bbox: BBoxSchema | None = None,
 ) -> list[TextElementSchema]:
     """
     Retourne les éléments dont le centre tombe dans la zone de recherche
     (cercle de rayon `radius` centré sur (center_x, center_y)).
-    Exclut l'élément clé lui-même si exclude_text est fourni.
+
+    Exclut l'élément clé lui-même si exclude_text est fourni (correspondance
+    exacte), et exclut aussi tout élément dont la boîte chevauche fortement
+    exclude_bbox si fourni. Ce second critère est nécessaire car la clé
+    retrouvée par find_key_in_elements() peut être un candidat multi-mots
+    reconstitué (ex: "Total TTC" fusionné à partir des tokens OCR "Total"
+    et "TTC") : sans lui, les tokens d'origine composant la clé restent
+    dans `elements` et peuvent être sélectionnés à tort comme valeur du
+    champ lorsque le vecteur spatial (delta_x, delta_y) est petit.
     """
     results = []
     exclude_lower = exclude_text.lower().strip() if exclude_text else None
 
     for elem in elements:
-        # Exclure la clé elle-même
+        # Exclure la clé elle-même (correspondance exacte de texte)
         if exclude_lower and elem.text.lower().strip() == exclude_lower:
+            continue
+
+        # Exclure les tokens qui composent la clé (chevauchement de boîte)
+        if exclude_bbox is not None and bbox_overlap_ratio(exclude_bbox, elem.bbox) >= 0.5:
             continue
 
         cx, cy = center_of_bbox(elem.bbox)
@@ -200,10 +234,14 @@ def compute_spatial_error(
         expected_x = key_cx + field_def.delta_x
         expected_y = key_cy + field_def.delta_y
 
-        # Distance minimale à un élément du document
+        # Distance minimale à un élément du document (hors tokens de la clé
+        # elle-même — voir bbox_overlap_ratio dans elements_in_search_zone
+        # pour pourquoi la seule exclusion par texte exact ne suffit pas)
         min_dist = float("inf")
         for elem in elements:
             if elem.text.lower().strip() == field_def.key_text.lower().strip():
+                continue
+            if bbox_overlap_ratio(key_elem.bbox, elem.bbox) >= 0.5:
                 continue
             cx, cy = center_of_bbox(elem.bbox)
             dist = distance_between_points(cx, cy, expected_x, expected_y)

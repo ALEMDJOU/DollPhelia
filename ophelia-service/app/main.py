@@ -14,6 +14,7 @@ from app.api.routes_ocr import router as ocr_router
 from app.api.routes_matching import router as matching_router
 from app.api.routes_extraction import router as extraction_router
 from app.api.routes_export import router as export_router
+from app.api.routes_ner import router as ner_router
 
 
 # ── Chargement du modèle au démarrage (une seule fois) ─────────
@@ -48,3 +49,4 @@ app.include_router(ocr_router, prefix="/api/v1/ocr", tags=["ocr"])
 app.include_router(matching_router, prefix="/api/v1/matching", tags=["matching"])
 app.include_router(extraction_router, prefix="/api/v1/extraction", tags=["extraction"])
 app.include_router(export_router, prefix="/api/v1/export", tags=["export"])
+app.include_router(ner_router, prefix="/api/v1/ner", tags=["ner"])

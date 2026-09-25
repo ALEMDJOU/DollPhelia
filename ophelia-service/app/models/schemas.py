@@ -72,6 +72,13 @@ class ProcessRequest(BaseModel):
     filepath: str
     templates: list[TemplateSchema] = []
     lang: str = "fra"
+    strategy: str = "auto"  # auto | template_matching | ai_layoutlm | ner
+
+
+# ── NER (reconnaissance d'entités nommées) ────────────────────
+
+class NerRequest(BaseModel):
+    elements: list[TextElementSchema]
 
 
 # ── Réponses ───────────────────────────────────────────────────
@@ -119,6 +126,18 @@ class ExtractionResponse(BaseModel):
     matching_score: float = 0.0
     fields: list[ExtractedFieldSchema] = []
     global_confidence: float = 0.0
+
+
+class EntitySchema(BaseModel):
+    entity_type: str  # date | amount | iban | email | phone | percentage | siret | person | organization
+    text: str
+    bbox: BBoxSchema
+    page_num: int = 1
+    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+
+
+class NerResponse(BaseModel):
+    entities: list[EntitySchema] = []
 
 
 class ProcessStartResponse(BaseModel):

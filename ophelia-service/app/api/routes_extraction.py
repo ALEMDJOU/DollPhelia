@@ -47,6 +47,7 @@ async def start_processing(request: ProcessRequest):
             filepath=request.filepath,
             templates=[t.model_dump() for t in request.templates],
             lang=request.lang,
+            strategy=request.strategy,
         )
         return ProcessStartResponse(task_id=task.id)
 
@@ -101,6 +102,7 @@ async def process_sync(request: ProcessRequest):
             filepath=request.filepath,
             templates=request.templates,
             lang=request.lang,
+            strategy=request.strategy,
         )
         return result
 

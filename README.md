@@ -9,16 +9,16 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/[TON_USER]/[TON_REPO]?style=social)](https://github.com/[TON_USER]/[TON_REPO]/stargazers)
 [![License](https://img.shields.io/github/license/[TON_USER]/[TON_REPO])](LICENSE)
-[![Dolibarr](https://img.shields.io/badge/Dolibarr-22.x-6c2eb5)](https://www.dolibarr.org/)
+[![Dolibarr](https://img.shields.io/badge/Dolibarr-22.0.5-6c2eb5)](https://www.dolibarr.org/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](ophelia-service/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#-contribuer)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contribuer)
 
 Module d'extraction automatique de documents pour [Dolibarr ERP/CRM](https://www.dolibarr.org/), propulsé par un microservice Python (OCR + IA).
 
 <!-- [Remplace par un GIF de démo : upload -> traitement -> validation -> export] -->
 <img src="[LIEN_VERS_TON_GIF_DE_DEMO]" alt="Démo Ophélia" width="720"/>
 
-[Démo](#-quick-start) · [Fonctionnalités](#-fonctionnalités) · [Installation](#-quick-start) · [Contribuer](#-contribuer) · [Signaler un bug]([LIEN_ISSUES])
+[Démo](#quick-start) · [Fonctionnalités](#fonctionnalités) · [Installation](#quick-start) · [Contribuer](#contribuer) · [Signaler un bug]([LIEN_ISSUES])
 
 </div>
 
@@ -28,35 +28,35 @@ Module d'extraction automatique de documents pour [Dolibarr ERP/CRM](https://www
 
 Ressaisir à la main les données d'une facture, d'un RIB ou d'un KBIS dans son ERP, c'est lent, répétitif et source d'erreurs. Ophélia règle ce problème directement dans Dolibarr :
 
-- 🎯 **Zéro ressaisie manuelle** — le document est lu, apparié à un template et ses champs sont extraits automatiquement.
-- 🧠 **Double stratégie d'extraction** — ancrage spatial déterministe (rapide, explicable) avec repli sur un modèle IA (LayoutLMv3) quand aucun template ne correspond.
-- ✅ **L'humain garde la main** — chaque champ extrait affiche son score de confiance ; rien n'est validé sans relecture.
-- 🔌 **Nativement intégré à Dolibarr** — pas d'outil externe à jongler, tout se passe dans l'ERP que vos équipes utilisent déjà.
-- 🏠 **100% auto-hébergé** — OCR (Tesseract) et modèle IA tournent en local, aucune donnée ne part vers un tiers.
+- **Zéro ressaisie manuelle** — le document est lu, apparié à un template et ses champs sont extraits automatiquement.
+- **Triple stratégie d'extraction** — ancrage spatial déterministe (rapide, explicable), repli sur un modèle IA (LayoutLMv3), et reconnaissance d'entités nommées par règles (dates, montants, IBAN...) toujours disponible en dernier recours.
+- **L'humain garde la main** — chaque champ extrait affiche son score de confiance ; rien n'est validé sans relecture.
+- **Nativement intégré à Dolibarr** — pas d'outil externe à jongler, tout se passe dans l'ERP que vos équipes utilisent déjà.
+- **Auto-hébergé** — OCR (Tesseract) et modèle IA tournent en local, aucune donnée ne part vers un tiers.
 
-## ✨ Fonctionnalités
+## Fonctionnalités
 
-- 📤 **Upload de documents** directement depuis Dolibarr (factures, CV, KBIS, RIB, ...)
-- 🧩 **Templates configurables** — définissez des ancres textuelles et des vecteurs spatiaux par type de document
-- 🔍 **OCR + appariement automatique** contre vos templates actifs, avec score de correspondance
-- 🤖 **Extraction spatiale ou IA (LayoutLMv3)** selon ce qui matche le mieux le document
-- 📊 **Scores de confiance par champ** (OCR × spatial × validation) pour prioriser la relecture
-- ✏️ **Interface de validation/correction** triée par confiance croissante
-- 👁️ **Aperçu avant export** en JSON ou XML
-- 🗂️ **Historique des exports** et traçabilité complète (qui, quand, quel format)
-- ⚙️ **Traitement asynchrone** (Celery/Redis) avec repli automatique en mode synchrone
+- Upload de documents directement depuis Dolibarr (factures, CV, KBIS, RIB, ...)
+- Templates configurables — définissez des ancres textuelles et des vecteurs spatiaux par type de document
+- OCR et appariement automatique contre vos templates actifs, avec score de correspondance
+- Extraction spatiale, IA (LayoutLMv3) ou NER par règles, selon ce qui est disponible et pertinent pour le document
+- Scores de confiance par champ (OCR × spatial × validation) pour prioriser la relecture
+- Interface de validation et de correction, triée par confiance croissante
+- Aperçu avant export, en JSON ou XML
+- Historique des exports et traçabilité complète (qui, quand, quel format)
+- Traitement asynchrone (Celery/Redis) avec repli automatique en mode synchrone
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 DollPhelia/
 ├── DolibarrFofack/htdocs/custom/ophelia/   # Module Dolibarr (PHP) — UI, BDD, orchestration
-└── ophelia-service/                        # Microservice Python (FastAPI) — OCR, matching, extraction IA
+└── ophelia-service/                        # Microservice Python (FastAPI) — OCR, matching, extraction IA/NER
 ```
 
-Le module PHP ne fait **aucun traitement d'image ou d'OCR lui-même** : il pilote l'upload, la persistance et la validation, et délègue tout le calcul au microservice via une API REST.
+Le module PHP ne fait aucun traitement d'image ou d'OCR lui-même : il pilote l'upload, la persistance et la validation, et délègue tout le calcul au microservice via une API REST.
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # 1. Microservice Python (OCR + IA)
@@ -67,15 +67,15 @@ cp -r DolibarrFofack/htdocs/custom/ophelia [VOTRE_DOLIBARR]/htdocs/custom/
 # -> Configuration > Modules > Ophélia > Activer
 ```
 
-> Prérequis : PHP 8.x + MariaDB (Dolibarr 19+), Python 3.11, [Tesseract OCR](https://github.com/tesseract-ocr/tesseract). Redis/Celery sont optionnels — sans eux, le module bascule automatiquement en traitement synchrone.
+> Prérequis : PHP 8.x + MariaDB (Dolibarr 22.0.5), Python 3.11, [Tesseract OCR](https://github.com/tesseract-ocr/tesseract). Redis/Celery sont optionnels — sans eux, le module bascule automatiquement en traitement synchrone.
 
-## 📖 Utilisation
+## Utilisation
 
-1. **Créez un template** (`Ophélia > Templates > Nouveau`) : définissez le type de document et ses champs (ex. `total_ttc`, ancré sur le texte `"Total TTC"`).
-2. **Téléversez un document** (`Ophélia > Documents > Nouveau document`).
+1. Créez un template (`Ophélia > Templates > Nouveau`) : définissez le type de document et ses champs (ex. `total_ttc`, ancré sur le texte `"Total TTC"`).
+2. Téléversez un document (`Ophélia > Documents > Nouveau document`).
 3. Cliquez sur **Lancer le traitement** : Ophélia OCRise le document, l'apparie au meilleur template puis extrait les champs.
-4. **Validez ou corrigez** les valeurs extraites, triées par confiance croissante.
-5. **Exportez** en JSON ou XML (avec aperçu avant téléchargement).
+4. Validez ou corrigez les valeurs extraites, triées par confiance croissante.
+5. Exportez en JSON ou XML, avec aperçu avant téléchargement.
 
 ```php
 // Exemple : appeler le microservice depuis votre propre code Dolibarr
@@ -83,15 +83,15 @@ $api = new ApiOphelia();
 $result = $api->processSync($filepath, $templatesSchema, 'eng');
 ```
 
-## ⭐ Soutenez le projet
+## Soutenez le projet
 
-Si Ophélia vous fait gagner du temps ou vous a inspiré, **laissez une étoile ⭐** en haut de cette page !
+Si Ophélia vous fait gagner du temps ou vous a inspiré, laissez une étoile en haut de cette page.
 
-Ce n'est pas juste un geste sympa : chaque étoile aide le projet à être découvert par d'autres développeurs Dolibarr qui pourraient en avoir besoin, et ça motive énormément la suite du développement. Merci 🙏
+Ce n'est pas juste un geste sympathique : chaque étoile aide le projet à être découvert par d'autres développeurs Dolibarr qui pourraient en avoir besoin, et cela motive la suite du développement. Merci.
 
-## 🤝 Contribuer
+## Contribuer
 
-Les contributions sont les bienvenues, petites ou grandes !
+Les contributions sont les bienvenues, petites ou grandes.
 
 1. Forkez le repo
 2. Créez votre branche (`git checkout -b feature/ma-fonctionnalite`)
@@ -100,7 +100,7 @@ Les contributions sont les bienvenues, petites ou grandes !
 
 Consultez [CONTRIBUTING.md]([LIEN_CONTRIBUTING]) pour les détails (à créer si absent).
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] Génération PDF des résultats validés
 - [ ] Tableau de bord des scores de confiance par type de document
@@ -108,9 +108,9 @@ Consultez [CONTRIBUTING.md]([LIEN_CONTRIBUTING]) pour les détails (à créer si
 - [ ] Support multi-pages avancé (documents composites)
 - [ ] Connecteurs d'export vers des modules Dolibarr tiers (factures fournisseurs, notes de frais...)
 
-*Une idée à ajouter ? [Ouvrez une issue]([LIEN_ISSUES]).*
+Une idée à ajouter ? [Ouvrez une issue]([LIEN_ISSUES]).
 
-## 📄 Licence
+## Licence
 
 Distribué sous licence [[TON_CHOIX_DE_LICENCE], ex: GPL-3.0]. Voir [`LICENSE`](LICENSE) pour plus de détails.
 
@@ -118,6 +118,6 @@ Distribué sous licence [[TON_CHOIX_DE_LICENCE], ex: GPL-3.0]. Voir [`LICENSE`](
 
 <div align="center">
 
-Construit avec ❤️ autour de [Dolibarr](https://www.dolibarr.org/) — projet initialement né dans le cadre d'un mémoire de master (ENSPY, Yaoundé, Cameroun).
+Construit autour de <a href="https://www.dolibarr.org/">Dolibarr</a> — projet initialement né dans le cadre d'un mémoire de master (ENSPY, Yaoundé, Cameroun).
 
 </div>
