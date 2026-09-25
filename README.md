@@ -112,14 +112,8 @@ Consultez [CONTRIBUTING.md]([LIEN_CONTRIBUTING]) pour les détails (à créer si
 
 Une idée à ajouter ? [Ouvrez une issue]([LIEN_ISSUES]).
 
-## Licence
-
-Distribué sous licence [[TON_CHOIX_DE_LICENCE], ex: GPL-3.0]. Voir [`LICENSE`](LICENSE) pour plus de détails.
-
----
-
 <div align="center">
 
-Construit autour de <a href="https://www.dolibarr.org/">Dolibarr</a> — projet initialement né dans le cadre d'un mémoire de master (ENSPY, Yaoundé, Cameroun).
+Construit autour de <a href="https://www.dolibarr.org/">Dolibarr</a> — projet initialement né dans le cadre d'un Stage Pré-ingénieur à Stevo Digital (ENSPY, Yaoundé, Cameroun).
 
 </div>
