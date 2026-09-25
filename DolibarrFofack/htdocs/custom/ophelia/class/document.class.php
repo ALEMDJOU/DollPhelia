@@ -175,7 +175,11 @@ class OpheliaDocument extends CommonObject
 	}
 
 	/**
-	 * Delete object in database
+	 * Delete object in database, cascading to every extraction result
+	 * attached to it (and each result's own extracted fields and export
+	 * history). llx_ophelia_extraction_result.fk_document has no ON DELETE
+	 * CASCADE, so leaving those rows behind makes deleteCommon() fail with
+	 * a foreign key constraint error.
 	 *
 	 * @param User $user      User that deletes
 	 * @param int  $notrigger 0=launch triggers, 1=disable triggers
@@ -183,7 +187,36 @@ class OpheliaDocument extends CommonObject
 	 */
 	public function delete(User $user, $notrigger = 0)
 	{
-		return $this->deleteCommon($user, $notrigger);
+		require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/extractionresult.class.php';
+
+		$this->db->begin();
+
+		$sql = "SELECT rowid FROM ".$this->db->prefix()."ophelia_extraction_result WHERE fk_document = ".((int) $this->id);
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->errors[] = $this->db->lasterror();
+			$this->db->rollback();
+			return -1;
+		}
+		while ($obj = $this->db->fetch_object($resql)) {
+			$result = new OpheliaExtractionResult($this->db);
+			if ($result->fetch($obj->rowid) > 0) {
+				if ($result->delete($user, 1) <= 0) {
+					$this->errors = array_merge($this->errors, $result->errors);
+					$this->db->rollback();
+					return -1;
+				}
+			}
+		}
+
+		$res = $this->deleteCommon($user, $notrigger);
+		if ($res <= 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->db->commit();
+		return $res;
 	}
 
 	/**

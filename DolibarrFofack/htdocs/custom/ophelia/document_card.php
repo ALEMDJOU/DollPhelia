@@ -16,6 +16,7 @@
 require '../../main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/document.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/template.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/strategy.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/api_ophelia.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/lib/ophelia.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
@@ -66,13 +67,36 @@ if ($action == 'ajax_status') {
 	exit;
 }
 
+// Serve the raw uploaded file : action=file&inline=1 for in-page preview,
+// action=file (no inline) forces a "Save as" download.
+if ($action == 'file' && $id > 0 && $user->hasRight('ophelia', 'document', 'read')) {
+	if (empty($object->filepath) || !dol_is_file($object->filepath)) {
+		accessforbidden('OpheliaFileNotFound');
+	}
+
+	$inline = GETPOSTINT('inline');
+
+	top_httphead(dol_mimetype($object->filename));
+	header('Content-Disposition: '.($inline ? 'inline' : 'attachment').'; filename="'.dol_sanitizeFileName($object->filename).'"');
+	header('Content-Length: '.filesize($object->filepath));
+	readfile($object->filepath);
+	exit;
+}
+
 // Actions
 if ($action == 'add' && $user->hasRight('ophelia', 'document', 'write')) {
 	$label = GETPOST('label', 'alphanohtml');
 	$doc_type = GETPOST('doc_type', 'alpha');
 
+	// Formats acceptes par ophelia-service : images (OCR), PDF (texte natif
+	// ou OCR de repli sur les pages scannees), DOCX et XLSX (texte natif).
+	$allowedExtensions = array('png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'webp', 'pdf', 'docx', 'xlsx');
+
 	if (empty($_FILES['userfile']) || empty($_FILES['userfile']['name'])) {
 		setEventMessages($langs->trans("OpheliaErrorNoFileSelected"), null, 'errors');
+		$action = 'create';
+	} elseif (!in_array(strtolower(pathinfo($_FILES['userfile']['name'], PATHINFO_EXTENSION)), $allowedExtensions, true)) {
+		setEventMessages($langs->trans("OpheliaErrorFileType", implode(', ', $allowedExtensions)), null, 'errors');
 		$action = 'create';
 	} else {
 		$uploaddir = opheliaGetDocumentDir();
@@ -125,12 +149,36 @@ if ($action == 'launch' && $id > 0 && $user->hasRight('ophelia', 'document', 'wr
 		}
 	}
 
+	// L'utilisateur peut choisir explicitement la strategie, ou la
+	// deleguer au systeme ('auto', par defaut). La liste des strategies
+	// proposees vient de llx_ophelia_strategy (geree via strategy.php) ;
+	// seuls les codes reellement implementes cote ophelia-service
+	// (VALID_STRATEGIES, orchestrator.py) y ont un effet. Toute valeur
+	// hors de cette liste est ramenee a 'auto' avant meme d'appeler l'API.
+	opheliaEnsureDefaultStrategies($db);
+	$strategyObj = new OpheliaStrategy($db);
+	$activeStrategyRecords = $strategyObj->fetchAll('ASC', 't.priority', 0, 0, '(active:=:1)');
+	if (!is_array($activeStrategyRecords)) {
+		$activeStrategyRecords = array();
+	}
+	$allowedStrategies = array();
+	foreach ($activeStrategyRecords as $s) {
+		$allowedStrategies[] = $s->code;
+	}
+	if (!in_array('auto', $allowedStrategies, true)) {
+		$allowedStrategies[] = 'auto'; // 'auto' must always remain selectable as ultimate fallback
+	}
+	$strategy = GETPOST('strategy', 'aZ09');
+	if (!in_array($strategy, $allowedStrategies, true)) {
+		$strategy = 'auto';
+	}
+
 	$api = new ApiOphelia();
 	$launched = false;
 	$ocrLang = getDolGlobalString('OPHELIA_OCR_LANG', 'eng');
 
 	try {
-		$taskId = $api->startProcessing($object->filepath, $templatesSchema, $ocrLang);
+		$taskId = $api->startProcessing($object->filepath, $templatesSchema, $ocrLang, $strategy);
 		$object->task_id = $taskId;
 		$object->status = OpheliaDocument::STATUS_PROCESSING;
 		$object->update($user);
@@ -141,7 +189,7 @@ if ($action == 'launch' && $id > 0 && $user->hasRight('ophelia', 'document', 'wr
 
 	if (!$launched) {
 		try {
-			$syncResult = $api->processSync($object->filepath, $templatesSchema, $ocrLang);
+			$syncResult = $api->processSync($object->filepath, $templatesSchema, $ocrLang, $strategy);
 			opheliaStoreExtractionResult($db, $object, $syncResult, $user);
 			setEventMessages($langs->trans("OpheliaProcessingDone"), null);
 			header('Location: '.dol_buildpath('/ophelia/extraction_validate.php', 1).'?document_id='.$object->id);
@@ -156,11 +204,18 @@ if ($action == 'launch' && $id > 0 && $user->hasRight('ophelia', 'document', 'wr
 }
 
 if ($action == 'confirm_delete' && $id > 0 && $user->hasRight('ophelia', 'document', 'delete')) {
-	if (!empty($object->filepath) && dol_is_file($object->filepath)) {
-		dol_delete_file($object->filepath);
-	}
+	// Delete the DB row(s) first (OpheliaDocument::delete() now cascades to
+	// extraction_result/extraction_field/export_history) and only remove the
+	// physical file once that succeeds. Deleting the file first meant a failed
+	// DB delete (e.g. a stale FK constraint) still left the file gone forever,
+	// with the document record surviving and pointing at nothing - breaking
+	// OCR/NER on any later retry since there was no file left to read.
+	$filepathToRemove = $object->filepath;
 	$res = $object->delete($user);
 	if ($res > 0) {
+		if (!empty($filepathToRemove) && dol_is_file($filepathToRemove)) {
+			dol_delete_file($filepathToRemove);
+		}
 		setEventMessages($langs->trans("RecordDeleted"), null);
 		header('Location: '.dol_buildpath('/ophelia/document_list.php', 1));
 		exit;
@@ -187,7 +242,8 @@ if ($action == 'create') {
 
 	print '<table class="border centpercent">';
 	print '<tr><td class="titlefieldcreate fieldrequired">'.$langs->trans("OpheliaFileToUpload").'</td>';
-	print '<td><input type="file" name="userfile" required></td></tr>';
+	print '<td><input type="file" name="userfile" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.pdf,.docx,.xlsx" required>';
+	print '<br><span class="opacitymedium small">'.$langs->trans("OpheliaAcceptedFormats").'</span></td></tr>';
 	print '<tr><td>'.$langs->trans("Label").'</td>';
 	print '<td><input type="text" name="label" class="minwidth300"></td></tr>';
 	print '<tr><td>'.$langs->trans("DocType").'</td>';
@@ -203,6 +259,11 @@ if ($action == 'create') {
 
 	print '</form>';
 } elseif ($id > 0) {
+	$fileExt = strtolower(pathinfo($object->filename, PATHINFO_EXTENSION));
+	$isPreviewableImage = in_array($fileExt, array('png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'webp'), true);
+	$isPreviewablePdf = ($fileExt === 'pdf');
+	$isPreviewable = ($isPreviewableImage || $isPreviewablePdf) && !empty($object->filepath) && dol_is_file($object->filepath);
+
 	$head = opheliaDocumentPrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans("OpheliaDocument"), -1, 'ophelia@ophelia');
 
@@ -228,21 +289,69 @@ if ($action == 'create') {
 
 	print dol_get_fiche_end();
 
+	// Launch panel: let the user pick a strategy explicitly, or delegate it to the system ('auto').
+	// Options come from llx_ophelia_strategy (active=1, managed via strategy.php), not a hardcoded list.
+	if ($object->status == OpheliaDocument::STATUS_UPLOADED && $user->hasRight('ophelia', 'document', 'write')) {
+		opheliaEnsureDefaultStrategies($db);
+		$strategyObj = new OpheliaStrategy($db);
+		$activeStrategyRecords = $strategyObj->fetchAll('ASC', 't.priority', 0, 0, '(active:=:1)');
+		if (!is_array($activeStrategyRecords)) {
+			$activeStrategyRecords = array();
+		}
+		$hasAutoOption = false;
+		foreach ($activeStrategyRecords as $s) {
+			if ($s->code === 'auto') {
+				$hasAutoOption = true;
+				break;
+			}
+		}
+
+		print '<form method="POST" action="'.$_SERVER["PHP_SELF"].'" class="center marginTopOnly">';
+		print '<input type="hidden" name="token" value="'.newToken().'">';
+		print '<input type="hidden" name="action" value="launch">';
+		print '<input type="hidden" name="id" value="'.$object->id.'">';
+		print '<label for="ophelia-strategy" style="margin-right:8px;">'.$langs->trans("OpheliaStrategyChoice").'</label>';
+		print '<select id="ophelia-strategy" name="strategy" class="flat">';
+		if (!$hasAutoOption) {
+			print '<option value="auto">'.$langs->trans("OpheliaStrategyAuto").'</option>';
+		}
+		foreach ($activeStrategyRecords as $s) {
+			print '<option value="'.dol_escape_htmltag($s->code).'">'.dol_escape_htmltag($s->label).'</option>';
+		}
+		print '</select> ';
+		print '<input type="submit" class="button" value="'.$langs->trans("OpheliaLaunchProcessing").'">';
+		print '</form>';
+	}
+
 	// Action buttons
 	print '<div class="tabsAction">';
-	if ($object->status == OpheliaDocument::STATUS_UPLOADED && $user->hasRight('ophelia', 'document', 'write')) {
-		print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=launch&token='.newToken().'">'.$langs->trans("OpheliaLaunchProcessing").'</a>';
-	}
 	if ($object->status == OpheliaDocument::STATUS_PROCESSING) {
 		print '<span class="butActionRefused classfortooltip">'.$langs->trans("OpheliaProcessingInProgress").'</span>';
 	}
 	if ($object->status >= OpheliaDocument::STATUS_PROCESSED) {
 		print '<a class="butAction" href="'.dol_buildpath('/ophelia/extraction_validate.php', 1).'?document_id='.$object->id.'">'.$langs->trans("OpheliaViewExtraction").'</a>';
 	}
+	if (!empty($object->filepath) && dol_is_file($object->filepath)) {
+		print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=file">'.$langs->trans("OpheliaDownloadDocument").'</a>';
+	}
+	if ($isPreviewable) {
+		print '<a class="butAction" href="#" onclick="jQuery(\'#ophelia-preview-panel\').toggle(); return false;">'.$langs->trans("OpheliaPreviewDocument").'</a>';
+	}
 	if ($user->hasRight('ophelia', 'document', 'delete')) {
 		print '<a class="butActionDelete" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=confirm_delete&token='.newToken().'" onclick="return confirm(\''.dol_escape_js($langs->trans("ConfirmDelete")).'\');">'.$langs->trans("Delete").'</a>';
 	}
 	print '</div>';
+
+	// Preview panel (image or PDF only), hidden until the user clicks "Previsualiser"
+	if ($isPreviewable) {
+		print '<div id="ophelia-preview-panel" class="marginTopOnly" style="display:none;">';
+		if ($isPreviewableImage) {
+			print '<img src="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=file&inline=1" class="ophelia-bbox-preview" alt="'.dol_escape_htmltag($object->label).'">';
+		} else {
+			print '<iframe src="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=file&inline=1" style="width:100%;height:700px;border:1px solid var(--ophelia-bordeaux, #800020);"></iframe>';
+		}
+		print '</div>';
+	}
 
 	// Polling widget while processing
 	if ($object->status == OpheliaDocument::STATUS_PROCESSING && $object->task_id) {

@@ -83,6 +83,7 @@ print '<td>'.$langs->trans("Label").'</td>';
 print '<td>'.$langs->trans("DocType").'</td>';
 print '<td class="center">'.$langs->trans("OpheliaVersion").'</td>';
 print '<td class="center">'.$langs->trans("OpheliaTemplateFields").'</td>';
+print '<td class="center">'.$langs->trans("OpheliaDefaultTemplate").'</td>';
 print '<td class="right">'.$langs->trans("Status").'</td>';
 print '</tr>';
 
@@ -90,7 +91,7 @@ print '<tr class="liste_titre">';
 print '<td><input type="text" class="flat maxwidth100" name="search_ref" value="'.dol_escape_htmltag($search_ref).'"></td>';
 print '<td><input type="text" class="flat maxwidth150" name="search_label" value="'.dol_escape_htmltag($search_label).'"></td>';
 print '<td><input type="text" class="flat maxwidth100" name="search_doctype" value="'.dol_escape_htmltag($search_doctype).'"></td>';
-print '<td></td><td></td>';
+print '<td></td><td></td><td></td>';
 print '<td class="right">';
 print '<input type="submit" class="button small" value="'.$langs->trans("Search").'">';
 print '<input type="submit" class="button small button-cancel" name="button_removefilter" value="'.$langs->trans("RemoveFilter").'">';
@@ -98,7 +99,7 @@ print '</td>';
 print '</tr>';
 
 if (empty($records)) {
-	print '<tr><td colspan="6" class="opacitymedium">'.$langs->trans("NoRecordFound").'</td></tr>';
+	print '<tr><td colspan="7" class="opacitymedium">'.$langs->trans("NoRecordFound").'</td></tr>';
 } else {
 	foreach ($records as $rec) {
 		$rec->fetchFields();
@@ -108,6 +109,7 @@ if (empty($records)) {
 		print '<td>'.dol_escape_htmltag($rec->doc_type).'</td>';
 		print '<td class="center">'.((int) $rec->version).'</td>';
 		print '<td class="center">'.count($rec->lines).'</td>';
+		print '<td class="center">'.(!empty($rec->is_default) ? img_picto($langs->trans("OpheliaDefaultTemplate"), 'star') : '').'</td>';
 		print '<td class="right">'.($rec->active ? img_picto($langs->trans("Enabled"), 'tick') : $langs->trans("Disabled")).'</td>';
 		print '</tr>';
 	}

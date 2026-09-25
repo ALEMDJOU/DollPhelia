@@ -176,7 +176,10 @@ class OpheliaExtractionResult extends CommonObject
 	}
 
 	/**
-	 * Delete object in database (and its extracted fields)
+	 * Delete object in database (and its extracted fields and export history :
+	 * both llx_ophelia_extraction_field and llx_ophelia_export_history have a
+	 * FOREIGN KEY on fk_result with no ON DELETE CASCADE, so they must be
+	 * cleared explicitly or deleteCommon() fails with a FK constraint error).
 	 *
 	 * @param User $user      User that deletes
 	 * @param int  $notrigger 0=launch triggers, 1=disable triggers
@@ -185,6 +188,14 @@ class OpheliaExtractionResult extends CommonObject
 	public function delete(User $user, $notrigger = 0)
 	{
 		$this->db->begin();
+
+		$sql = "DELETE FROM ".$this->db->prefix()."ophelia_export_history WHERE fk_result = ".((int) $this->id);
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			$this->error = $this->db->lasterror();
+			$this->db->rollback();
+			return -1;
+		}
 
 		$sql = "DELETE FROM ".$this->db->prefix()."ophelia_extraction_field WHERE fk_result = ".((int) $this->id);
 		$resql = $this->db->query($sql);

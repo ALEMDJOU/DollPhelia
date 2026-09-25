@@ -151,6 +151,48 @@ function opheliaGetDocumentDir()
 }
 
 /**
+ * Make sure llx_ophelia_strategy always has at least the strategy codes
+ * actually implemented by ophelia-service (VALID_STRATEGIES in
+ * orchestrator.py). Self-heals installs where the table would otherwise
+ * stay empty (module activated before this seed existed, or seed rows
+ * later deleted by mistake) so the strategy dropdown is never empty.
+ *
+ * @param DoliDB $db Database handler
+ * @return void
+ */
+function opheliaEnsureDefaultStrategies($db)
+{
+	static $checked = false;
+	if ($checked) {
+		return;
+	}
+	$checked = true;
+
+	$sql = "SELECT COUNT(*) as nb FROM ".$db->prefix()."ophelia_strategy";
+	$resql = $db->query($sql);
+	if (!$resql) {
+		return;
+	}
+	$obj = $db->fetch_object($resql);
+	if (!$obj || (int) $obj->nb > 0) {
+		return;
+	}
+
+	// code must match a value of VALID_STRATEGIES in ophelia-service (app/services/orchestrator.py)
+	$defaults = array(
+		array('auto', 'Automatique', 'Le systeme choisit la meilleure strategie (matching de template, puis repli IA)', 0),
+		array('template_matching', 'Appariement de template', "Force l'extraction ancree par vecteur spatial sur le template le mieux apparie", 1),
+		array('ai_layoutlm', 'IA (LayoutLMv3)', 'Force le repli sur le modele IA LayoutLMv3 (ONNX)', 2),
+		array('ner', 'NER (regles)', "Force l'extraction par reconnaissance d'entites nommees a base de regles", 3),
+	);
+	foreach ($defaults as $d) {
+		$insertSql = "INSERT INTO ".$db->prefix()."ophelia_strategy(code, label, description, priority, active)";
+		$insertSql .= " VALUES ('".$db->escape($d[0])."', '".$db->escape($d[1])."', '".$db->escape($d[2])."', ".((int) $d[3]).", 1)";
+		$db->query($insertSql);
+	}
+}
+
+/**
  * Persist an ExtractionResponse (from ophelia-service) into llx_ophelia_extraction_result
  * and llx_ophelia_extraction_field, and update the parent document status.
  *

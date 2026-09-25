@@ -59,6 +59,9 @@ if ($action == 'add_field' && $user->hasRight('ophelia', 'document', 'write')) {
 		$newid = $field->create($user, 1);
 		if ($newid <= 0) {
 			setEventMessages(implode(', ', $field->errors), null, 'errors');
+		} else {
+			// The field configuration changed : bump OpheliaVersion (Gerer Version)
+			$object->incrementVersion($user);
 		}
 	}
 	header('Location: '.$_SERVER["PHP_SELF"].'?id='.$id);
@@ -69,6 +72,7 @@ if ($action == 'delete_field' && $fieldid > 0 && $user->hasRight('ophelia', 'doc
 	$field = new OpheliaTemplateField($db);
 	if ($field->fetch($fieldid) > 0 && $field->fk_template == $object->id) {
 		$field->delete($user, 1);
+		$object->incrementVersion($user);
 	}
 	header('Location: '.$_SERVER["PHP_SELF"].'?id='.$id);
 	exit;

@@ -15,7 +15,10 @@
 
 require '../../main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/template.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/document.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/api_ophelia.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/lib/ophelia.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 
 global $db, $langs, $user, $conf;
@@ -44,6 +47,7 @@ if ($action == 'add' && $user->hasRight('ophelia', 'document', 'write')) {
 	$object->doc_type = GETPOST('doc_type', 'alpha');
 	$object->version = 1;
 	$object->active = 1;
+	$object->is_default = 0;
 	$object->fk_user_author = $user->id;
 	$object->date_creation = dol_now();
 
@@ -80,7 +84,28 @@ if ($action == 'update' && $id > 0 && $user->hasRight('ophelia', 'document', 'wr
 
 if ($action == 'toggle_active' && $id > 0 && $user->hasRight('ophelia', 'document', 'write')) {
 	$object->active = $object->active ? 0 : 1;
-	$object->update($user);
+	if (!$object->active && $object->is_default) {
+		$object->unsetAsDefault($user); // an inactive template cannot remain the default for its doc_type
+	} else {
+		$object->update($user);
+	}
+	header('Location: '.$_SERVER["PHP_SELF"].'?id='.$id);
+	exit;
+}
+
+if ($action == 'set_default' && $id > 0 && $user->hasRight('ophelia', 'document', 'write')) {
+	$res = $object->setAsDefault($user);
+	if ($res > 0) {
+		setEventMessages($langs->trans("OpheliaSetDefaultDone"), null);
+	} else {
+		setEventMessages(implode(', ', $object->errors), null, 'errors');
+	}
+	header('Location: '.$_SERVER["PHP_SELF"].'?id='.$id);
+	exit;
+}
+
+if ($action == 'unset_default' && $id > 0 && $user->hasRight('ophelia', 'document', 'write')) {
+	$object->unsetAsDefault($user);
 	header('Location: '.$_SERVER["PHP_SELF"].'?id='.$id);
 	exit;
 }
@@ -93,6 +118,33 @@ if ($action == 'confirm_delete' && $id > 0 && $user->hasRight('ophelia', 'docume
 		exit;
 	} else {
 		setEventMessages(implode(', ', $object->errors), null, 'errors');
+	}
+}
+
+// Tester Template : run matching + extraction on a real document, scoped to
+// this single template, but never persist an extraction_result nor touch
+// the document's status. Lets an administrator validate spatial anchors
+// (delta_x/delta_y/theta/key_text) before relying on the template in production.
+$testDocumentId = GETPOSTINT('test_document_id');
+$testResult = null;
+$testError = null;
+if ($action == 'run_test' && $id > 0 && $user->hasRight('ophelia', 'document', 'write')) {
+	$action = 'test';
+	if ($testDocumentId <= 0) {
+		setEventMessages($langs->trans("OpheliaErrorNoDocumentSelected"), null, 'errors');
+	} else {
+		$testDoc = new OpheliaDocument($db);
+		if ($testDoc->fetch($testDocumentId) <= 0 || empty($testDoc->filepath) || !dol_is_file($testDoc->filepath)) {
+			setEventMessages($langs->trans("OpheliaFileNotFound"), null, 'errors');
+		} else {
+			$api = new ApiOphelia();
+			$ocrLang = getDolGlobalString('OPHELIA_OCR_LANG', 'eng');
+			try {
+				$testResult = $api->processSync($testDoc->filepath, array($object->toApiSchema()), $ocrLang, 'template_matching');
+			} catch (Exception $e) {
+				$testError = $e->getMessage();
+			}
+		}
 	}
 }
 
@@ -158,6 +210,74 @@ if ($action == 'create') {
 	print '</div>';
 
 	print '</form>';
+} elseif ($action == 'test' && $id > 0) {
+	$head = opheliaTemplatePrepareHead($object);
+	print dol_get_fiche_head($head, 'card', $langs->trans("OpheliaTemplate"), -1, 'ophelia@ophelia');
+
+	print load_fiche_titre($langs->trans("OpheliaTestTemplate").' - '.$object->label, '', '');
+
+	$testDocs = new OpheliaDocument($db);
+	$testDocsList = $testDocs->fetchAll('DESC', 't.date_upload', 0, 0, '');
+	if (!is_array($testDocsList)) {
+		$testDocsList = array();
+	}
+
+	if (empty($testDocsList)) {
+		print '<div class="opacitymedium">'.$langs->trans("OpheliaNoDocumentToTest").'</div>';
+	} else {
+		print '<form method="POST" action="'.$_SERVER["PHP_SELF"].'" class="marginTopOnly">';
+		print '<input type="hidden" name="token" value="'.newToken().'">';
+		print '<input type="hidden" name="action" value="run_test">';
+		print '<input type="hidden" name="id" value="'.$object->id.'">';
+		print '<label for="test_document_id" style="margin-right:8px;">'.$langs->trans("OpheliaSelectDocumentToTest").'</label>';
+		print '<select id="test_document_id" name="test_document_id" class="flat minwidth300">';
+		foreach ($testDocsList as $td) {
+			$selected = ($testDocumentId == $td->id) ? ' selected' : '';
+			print '<option value="'.$td->id.'"'.$selected.'>'.dol_escape_htmltag($td->ref.' - '.$td->label).'</option>';
+		}
+		print '</select> ';
+		print '<input type="submit" class="button" value="'.$langs->trans("OpheliaRunTest").'">';
+		print '</form>';
+	}
+
+	if ($testError !== null) {
+		print '<div class="error marginTopOnly">'.dol_escape_htmltag($testError).'</div>';
+	} elseif ($testResult !== null) {
+		print '<div class="marginTopOnly">';
+		print load_fiche_titre($langs->trans("OpheliaTestResult"), '', '');
+		print '<table class="border tableforfield centpercent">';
+		print '<tr><td class="titlefield">'.$langs->trans("OpheliaMatchingScore").'</td><td>'.(isset($testResult['matching_score']) && $testResult['matching_score'] !== null ? opheliaConfidenceBadge($testResult['matching_score']) : $langs->trans("OpheliaNoMatch")).'</td></tr>';
+		print '<tr><td>'.$langs->trans("OpheliaGlobalConfidence").'</td><td>'.opheliaConfidenceBadge(isset($testResult['global_confidence']) ? $testResult['global_confidence'] : 0).'</td></tr>';
+		print '</table>';
+
+		if (!empty($testResult['fields']) && is_array($testResult['fields'])) {
+			print '<div class="div-table-responsive marginTopOnly">';
+			print '<table class="tagtable liste centpercent">';
+			print '<tr class="liste_titre">';
+			print '<td>'.$langs->trans("OpheliaFieldName").'</td>';
+			print '<td>'.$langs->trans("OpheliaExtractedValue").'</td>';
+			print '<td class="center">'.$langs->trans("OpheliaConfidenceTotal").'</td>';
+			print '</tr>';
+			foreach ($testResult['fields'] as $f) {
+				print '<tr class="oddeven">';
+				print '<td>'.dol_escape_htmltag($f['field_name'] ?? '').'</td>';
+				print '<td>'.dol_escape_htmltag($f['extracted_value'] ?? '').'</td>';
+				print '<td class="center">'.opheliaConfidenceBadge($f['confidence_total'] ?? 0).'</td>';
+				print '</tr>';
+			}
+			print '</table>';
+			print '</div>';
+		} else {
+			print '<div class="opacitymedium marginTopOnly">'.$langs->trans("OpheliaNoFieldExtracted").'</div>';
+		}
+		print '</div>';
+	}
+
+	print dol_get_fiche_end();
+
+	print '<div class="tabsAction">';
+	print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'">'.$langs->trans("Back").'</a>';
+	print '</div>';
 } elseif ($id > 0) {
 	$head = opheliaTemplatePrepareHead($object);
 	print dol_get_fiche_head($head, 'card', $langs->trans("OpheliaTemplate"), -1, 'ophelia@ophelia');
@@ -172,6 +292,7 @@ if ($action == 'create') {
 	print '<tr><td>'.$langs->trans("Description").'</td><td>'.dol_htmlentitiesbr($object->description).'</td></tr>';
 	print '<tr><td>'.$langs->trans("OpheliaVersion").'</td><td>'.((int) $object->version).'</td></tr>';
 	print '<tr><td>'.$langs->trans("Status").'</td><td>'.($object->active ? img_picto($langs->trans("Enabled"), 'tick').' '.$langs->trans("Enabled") : $langs->trans("Disabled")).'</td></tr>';
+	print '<tr><td>'.$langs->trans("OpheliaDefaultTemplate").'</td><td>'.(!empty($object->is_default) ? img_picto($langs->trans("Yes"), 'star').' '.$langs->trans("Yes") : $langs->trans("No")).'</td></tr>';
 	print '</table>';
 	print '</div>';
 
@@ -181,6 +302,16 @@ if ($action == 'create') {
 	if ($user->hasRight('ophelia', 'document', 'write')) {
 		print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=edit">'.$langs->trans("Modify").'</a>';
 		print '<a class="butAction" href="'.dol_buildpath('/ophelia/template_fields.php', 1).'?id='.$object->id.'">'.$langs->trans("OpheliaManageFields").'</a>';
+		if (!empty($object->lines)) {
+			print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=test">'.$langs->trans("OpheliaTestTemplate").'</a>';
+		}
+		if ($object->active) {
+			if (!empty($object->is_default)) {
+				print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=unset_default&token='.newToken().'">'.$langs->trans("OpheliaUnsetDefault").'</a>';
+			} else {
+				print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=set_default&token='.newToken().'">'.$langs->trans("OpheliaSetDefault").'</a>';
+			}
+		}
 		print '<a class="butAction" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&action=toggle_active&token='.newToken().'">'.($object->active ? $langs->trans("Disable") : $langs->trans("Enable")).'</a>';
 	}
 	if ($user->hasRight('ophelia', 'document', 'delete')) {

@@ -263,7 +263,18 @@ class modOphelia extends DolibarrModules
 
 		$this->remove($options);
 
-		$sql = array();
+		// Seed the strategy codes actually implemented by ophelia-service
+		// (VALID_STRATEGIES in orchestrator.py) so document_card.php's
+		// strategy dropdown is never empty on a fresh install.
+		// ignoreerror=1 : harmless if already seeded (unique index on code).
+		$sql = array(
+			array('sql' => "INSERT INTO ".MAIN_DB_PREFIX."ophelia_strategy(code, label, description, priority, active) VALUES ('auto', 'Automatique', 'Le systeme choisit la meilleure strategie (matching de template, puis repli IA)', 0, 1)", 'ignoreerror' => 1),
+			array('sql' => "INSERT INTO ".MAIN_DB_PREFIX."ophelia_strategy(code, label, description, priority, active) VALUES ('template_matching', 'Appariement de template', 'Force l''extraction ancree par vecteur spatial sur le template le mieux apparie', 1, 1)", 'ignoreerror' => 1),
+			array('sql' => "INSERT INTO ".MAIN_DB_PREFIX."ophelia_strategy(code, label, description, priority, active) VALUES ('ai_layoutlm', 'IA (LayoutLMv3)', 'Force le repli sur le modele IA LayoutLMv3 (ONNX)', 2, 1)", 'ignoreerror' => 1),
+			array('sql' => "INSERT INTO ".MAIN_DB_PREFIX."ophelia_strategy(code, label, description, priority, active) VALUES ('ner', 'NER (regles)', 'Force l''extraction par reconnaissance d''entites nommees a base de regles', 3, 1)", 'ignoreerror' => 1),
+			// Template "par defaut" (Gerer les templates) : retrofit is_default on installs that predate it
+			array('sql' => "ALTER TABLE ".MAIN_DB_PREFIX."ophelia_template ADD COLUMN IF NOT EXISTS is_default TINYINT DEFAULT 0 NOT NULL", 'ignoreerror' => 1),
+		);
 
 		return $this->_init($sql, $options);
 	}

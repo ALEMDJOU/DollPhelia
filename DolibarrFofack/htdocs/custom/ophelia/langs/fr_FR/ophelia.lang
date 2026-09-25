@@ -17,6 +17,8 @@ OpheliaNewStrategy=Nouvelle strategie
 OpheliaStrategyCode=Code strategie
 OpheliaStrategyUsed=Strategie utilisee
 OpheliaPriority=Priorite
+OpheliaStrategyCodeHelp=Seuls les codes deja implementes cote ophelia-service peuvent etre ajoutes ici
+OpheliaAllStrategiesConfigured=Toutes les strategies implementees par ophelia-service sont deja configurees
 
 OpheliaStatusUploaded=Televerse
 OpheliaStatusProcessing=En cours de traitement
@@ -32,16 +34,30 @@ OpheliaFileName=Nom du fichier
 OpheliaFileSize=Taille du fichier
 OpheliaErrorNoFileSelected=Aucun fichier selectionne
 OpheliaErrorUpload=Erreur lors du televersement du fichier
+OpheliaErrorFileType=Format de fichier non accepte. Formats acceptes : %s
+OpheliaAcceptedFormats=Images (PNG, JPG, TIFF, BMP, WEBP), PDF, Word (.docx), Excel (.xlsx)
 
 OpheliaLaunchProcessing=Lancer le traitement
+OpheliaStrategyChoice=Strategie
+OpheliaStrategyAuto=Automatique (recommande)
+OpheliaStrategyTemplateMatching=Forcer : appariement de template
+OpheliaStrategyAiLayoutlm=Forcer : IA (LayoutLMv3)
+OpheliaStrategyNer=Forcer : NER (regles)
 OpheliaProcessingInProgress=Traitement en cours...
 OpheliaProcessingDone=Traitement termine
 OpheliaWaitingForProcessing=En attente du traitement OCR / appariement / extraction...
 OpheliaViewExtraction=Voir l'extraction
 OpheliaErrorApi=Erreur du service Ophelia
+OpheliaDownloadDocument=Telecharger le document
+OpheliaPreviewDocument=Previsualiser le document
+OpheliaFileNotFound=Fichier introuvable sur le serveur
 
 OpheliaMatchingScore=Score d'appariement
 OpheliaVersion=Version
+OpheliaDefaultTemplate=Template par defaut
+OpheliaSetDefault=Definir par defaut
+OpheliaUnsetDefault=Retirer le statut par defaut
+OpheliaSetDefaultDone=Template defini comme modele par defaut pour ce type de document
 
 OpheliaTemplateFields=Champs du template
 OpheliaFieldName=Nom du champ
@@ -54,6 +70,15 @@ OpheliaRelationType=Type de relation
 OpheliaExtractionMethod=Methode d'extraction
 OpheliaRequired=Obligatoire
 OpheliaAddField=Ajouter un champ
+
+OpheliaTestTemplate=Tester le template
+OpheliaSelectDocumentToTest=Document a tester
+OpheliaRunTest=Lancer le test
+OpheliaTestResult=Resultat du test (non enregistre)
+OpheliaNoDocumentToTest=Aucun document televerse pour effectuer un test. Televersez d'abord un document.
+OpheliaErrorNoDocumentSelected=Veuillez selectionner un document a tester
+OpheliaNoMatch=Aucune correspondance
+OpheliaNoFieldExtracted=Aucun champ extrait
 
 OpheliaExtractionResults=Resultats d'extraction
 OpheliaNoExtractionYet=Aucune extraction disponible pour ce document

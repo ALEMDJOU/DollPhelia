@@ -15,6 +15,7 @@
 
 require '../../main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/class/strategy.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/ophelia/lib/ophelia.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 
 global $db, $langs, $user, $conf;
@@ -24,6 +25,20 @@ $langs->load("ophelia@ophelia");
 if (!isModEnabled('ophelia') || !$user->hasRight('ophelia', 'document', 'read')) {
 	accessforbidden();
 }
+
+// Strategy codes actually implemented by ophelia-service (VALID_STRATEGIES
+// in app/services/orchestrator.py). A row whose code is not in this list
+// would show up in document_card.php's dropdown but always fall back to
+// 'auto' server-side, so new codes can only be added here once the
+// corresponding strategy is implemented in ophelia-service.
+$opheliaKnownStrategyCodes = array(
+	'auto' => 'Automatique',
+	'template_matching' => 'Appariement de template',
+	'ai_layoutlm' => 'IA (LayoutLMv3)',
+	'ner' => 'NER (regles)',
+);
+
+opheliaEnsureDefaultStrategies($db);
 
 $action = GETPOST('action', 'aZ09');
 $id = GETPOSTINT('id');
@@ -36,7 +51,7 @@ if ($action == 'add' && $user->hasRight('ophelia', 'document', 'write')) {
 	$object->priority = GETPOSTINT('priority');
 	$object->active = 1;
 
-	if (empty($object->code) || empty($object->label)) {
+	if (empty($object->code) || empty($object->label) || !array_key_exists($object->code, $opheliaKnownStrategyCodes)) {
 		setEventMessages($langs->trans("ErrorFieldsRequired"), null, 'errors');
 	} else {
 		$newid = $object->create($user, 1);
@@ -125,31 +140,45 @@ print '</table>';
 print '</div>';
 
 if ($user->hasRight('ophelia', 'document', 'write')) {
+	$usedCodes = array();
+	foreach ($records as $rec) {
+		$usedCodes[] = $rec->code;
+	}
+	$availableCodes = array_diff_key($opheliaKnownStrategyCodes, array_flip($usedCodes));
+
 	print load_fiche_titre($langs->trans("OpheliaNewStrategy"), '', '');
 
-	print '<form method="POST" action="'.$_SERVER["PHP_SELF"].'">';
-	print '<input type="hidden" name="token" value="'.newToken().'">';
-	print '<input type="hidden" name="action" value="add">';
+	if (empty($availableCodes)) {
+		print '<div class="opacitymedium">'.$langs->trans("OpheliaAllStrategiesConfigured").'</div>';
+	} else {
+		print '<form method="POST" action="'.$_SERVER["PHP_SELF"].'">';
+		print '<input type="hidden" name="token" value="'.newToken().'">';
+		print '<input type="hidden" name="action" value="add">';
 
-	print '<table class="border centpercent">';
-	print '<tr>';
-	print '<td class="titlefieldcreate fieldrequired">'.$langs->trans("OpheliaStrategyCode").'</td>';
-	print '<td><input type="text" name="code" class="minwidth150" required></td>';
-	print '<td class="fieldrequired">'.$langs->trans("Label").'</td>';
-	print '<td><input type="text" name="label" class="minwidth200" required></td>';
-	print '</tr><tr>';
-	print '<td>'.$langs->trans("Description").'</td>';
-	print '<td colspan="3"><input type="text" name="description" class="minwidth300"></td>';
-	print '</tr><tr>';
-	print '<td>'.$langs->trans("OpheliaPriority").'</td>';
-	print '<td><input type="number" name="priority" class="width75" value="0"></td>';
-	print '<td colspan="2"></td>';
-	print '</tr>';
-	print '</table>';
+		print '<table class="border centpercent">';
+		print '<tr>';
+		print '<td class="titlefieldcreate fieldrequired">'.$langs->trans("OpheliaStrategyCode").'</td>';
+		print '<td><select name="code" class="minwidth150" required>';
+		foreach ($availableCodes as $code => $defaultLabel) {
+			print '<option value="'.dol_escape_htmltag($code).'">'.dol_escape_htmltag($code).'</option>';
+		}
+		print '</select></td>';
+		print '<td class="fieldrequired">'.$langs->trans("Label").'</td>';
+		print '<td><input type="text" name="label" class="minwidth200" required></td>';
+		print '</tr><tr>';
+		print '<td>'.$langs->trans("Description").'</td>';
+		print '<td colspan="3"><input type="text" name="description" class="minwidth300"></td>';
+		print '</tr><tr>';
+		print '<td>'.$langs->trans("OpheliaPriority").'</td>';
+		print '<td><input type="number" name="priority" class="width75" value="0"></td>';
+		print '<td colspan="2" class="opacitymedium small">'.$langs->trans("OpheliaStrategyCodeHelp").'</td>';
+		print '</tr>';
+		print '</table>';
 
-	print '<div class="center"><input type="submit" class="button" value="'.$langs->trans("Add").'"></div>';
+		print '<div class="center"><input type="submit" class="button" value="'.$langs->trans("Add").'"></div>';
 
-	print '</form>';
+		print '</form>';
+	}
 }
 
 print '</div>';

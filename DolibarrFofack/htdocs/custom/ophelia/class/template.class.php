@@ -36,6 +36,7 @@ class OpheliaTemplate extends CommonObject
 		'doc_type' => array('type' => 'varchar(50)', 'label' => 'DocType', 'enabled' => 1, 'position' => 40, 'notnull' => 1, 'visible' => 1, 'index' => 1),
 		'version' => array('type' => 'integer', 'label' => 'Version', 'enabled' => 1, 'position' => 50, 'notnull' => 1, 'visible' => 1, 'default' => 1),
 		'active' => array('type' => 'integer', 'label' => 'Active', 'enabled' => 1, 'position' => 60, 'notnull' => 1, 'visible' => 1, 'default' => 1, 'index' => 1),
+		'is_default' => array('type' => 'integer', 'label' => 'IsDefault', 'enabled' => 1, 'position' => 65, 'notnull' => 1, 'visible' => 1, 'default' => 0),
 		'fk_user_author' => array('type' => 'integer:User:user/class/user.class.php', 'label' => 'UserAuthor', 'enabled' => 1, 'position' => 70, 'notnull' => 0, 'visible' => -2),
 		'date_creation' => array('type' => 'datetime', 'label' => 'DateCreation', 'enabled' => 1, 'position' => 500, 'notnull' => 1, 'visible' => -2),
 		'tms' => array('type' => 'timestamp', 'label' => 'DateModification', 'enabled' => 1, 'position' => 501, 'notnull' => 0, 'visible' => -2),
@@ -48,6 +49,7 @@ class OpheliaTemplate extends CommonObject
 	public $doc_type;
 	public $version;
 	public $active;
+	public $is_default;
 	public $fk_user_author;
 	public $date_creation;
 
@@ -198,6 +200,70 @@ class OpheliaTemplate extends CommonObject
 
 		$this->db->commit();
 		return 1;
+	}
+
+	/**
+	 * Mark this template as the default one for its doc_type, clearing the
+	 * flag on every other template sharing the same doc_type (only one
+	 * default template per doc_type at a time). Only an active template can
+	 * become the default.
+	 *
+	 * @param User $user Acting user
+	 * @return int         Return integer <0 if KO, >0 if OK
+	 */
+	public function setAsDefault(User $user)
+	{
+		if (empty($this->active)) {
+			$this->errors[] = 'ErrorOpheliaTemplateMustBeActiveToBeDefault';
+			return -1;
+		}
+
+		$this->db->begin();
+
+		$sql = "UPDATE ".$this->db->prefix()."ophelia_template SET is_default = 0";
+		$sql .= " WHERE doc_type = '".$this->db->escape($this->doc_type)."' AND rowid <> ".((int) $this->id);
+		if (!$this->db->query($sql)) {
+			$this->errors[] = $this->db->lasterror();
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->is_default = 1;
+		$result = $this->updateCommon($user, 1);
+		if ($result <= 0) {
+			$this->db->rollback();
+			return -1;
+		}
+
+		$this->db->commit();
+		return 1;
+	}
+
+	/**
+	 * Remove the "default template" flag from this template
+	 *
+	 * @param User $user Acting user
+	 * @return int         Return integer <0 if KO, >0 if OK
+	 */
+	public function unsetAsDefault(User $user)
+	{
+		$this->is_default = 0;
+		return $this->updateCommon($user, 1);
+	}
+
+	/**
+	 * Bump the template version. Called whenever the spatial anchor
+	 * configuration (llx_ophelia_template_field) changes, so OpheliaVersion
+	 * reflects the actual field configuration history instead of staying
+	 * frozen at its creation value.
+	 *
+	 * @param User $user Acting user
+	 * @return int         Return integer <0 if KO, >0 if OK
+	 */
+	public function incrementVersion(User $user)
+	{
+		$this->version = ((int) $this->version) + 1;
+		return $this->updateCommon($user, 1);
 	}
 
 	/**
