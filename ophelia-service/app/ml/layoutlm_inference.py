@@ -67,7 +67,14 @@ def run_layoutlm_inference(
         image = Image.new("RGB", (224, 224), (255, 255, 255))
 
     try:
-        # Tokenization
+        # Tokenization. padding=True (plutot que "max_length") ne complete
+        # que jusqu'a la longueur reelle de la sequence : le graphe ONNX
+        # declare sequence_length comme axe dynamique (verifie via
+        # onnxruntime.InferenceSession.get_inputs()), donc rien n'impose de
+        # forcer 512 tokens a chaque appel. Un document court (DOCX/XLSX de
+        # quelques lignes) passait par un forward pass de 512 tokens quel
+        # que soit son contenu reel — le repli IA est deja le chemin le plus
+        # lent du pipeline (CPU, pas de GPU), inutile de l'alourdir encore.
         encoding = processor(
             image,
             words,
@@ -75,12 +82,31 @@ def run_layoutlm_inference(
             return_tensors="np",
             truncation=True,
             max_length=512,
-            padding="max_length",
+            padding=True,
         )
 
-        # Inférence
-        outputs = model(**{k: v for k, v in encoding.items()})
-        logits = outputs.logits
+        # Inférence — on n'appelle PAS model(**encoding) : le forward()
+        # générique de optimum.ORTModelForTokenClassification ne connaît
+        # que input_ids/attention_mask/token_type_ids et ignore silencieusement
+        # bbox/pixel_values passés en **kwargs, alors que le graphe ONNX de
+        # LayoutLMv3 les exige tous les deux (ValueError "Required inputs
+        # ['bbox', 'pixel_values'] are missing from input feed"). On appelle
+        # donc directement la session onnxruntime sous-jacente, avec un feed
+        # construit à partir de ses propres entrées déclarées (nom + dtype)
+        # pour rester correct quel que soit le jeu d'entrées du graphe.
+        session = model.model
+        feed = {}
+        for onnx_input in session.get_inputs():
+            value = encoding[onnx_input.name]
+            if "int64" in onnx_input.type:
+                value = value.astype(np.int64)
+            elif "float" in onnx_input.type:
+                value = value.astype(np.float32)
+            feed[onnx_input.name] = value
+
+        output_names = [o.name for o in session.get_outputs()]
+        raw_outputs = session.run(output_names, feed)
+        logits = raw_outputs[output_names.index("logits")]
 
         # Décoder les prédictions
         predictions = _decode_predictions(logits, encoding, model)
@@ -124,8 +150,16 @@ def _decode_predictions(
     """
     Décode les logits du modèle en prédictions NER.
     """
-    predictions_idx = np.argmax(logits[0], axis=-1)
-    scores = np.max(logits[0], axis=-1)
+    # Softmax sur les logits bruts : sans cela, `score` est un logit non
+    # borné (ex: 6.23) au lieu d'une probabilité dans [0, 1], ce qui casse
+    # le contrat de confidence_total utilisé partout ailleurs dans le
+    # système (ExtractedFieldSchema, Définition 4.11 du mémoire).
+    token_logits = logits[0]
+    exp_logits = np.exp(token_logits - np.max(token_logits, axis=-1, keepdims=True))
+    probabilities = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+
+    predictions_idx = np.argmax(probabilities, axis=-1)
+    scores = np.max(probabilities, axis=-1)
 
     # Récupérer la correspondance token → mot original
     word_ids = encoding.word_ids(batch_index=0) if hasattr(encoding, "word_ids") else None
