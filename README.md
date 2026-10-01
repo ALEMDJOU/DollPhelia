@@ -1,24 +1,17 @@
 <div align="center">
 
-<!-- [Remplace par ton logo ou une image de couverture, ex: docs/img/logo.png] -->
-<img src="[LIEN_VERS_TON_LOGO_OU_BANNIERE]" alt="Ophélia" width="480"/>
-
 # Ophélia
 
 **Arrêtez de ressaisir vos factures à la main. Laissez Ophélia les lire pour vous.**
 
-[![GitHub stars](https://img.shields.io/github/stars/[TON_USER]/[TON_REPO]?style=social)](https://github.com/[TON_USER]/[TON_REPO]/stargazers)
-[![License](https://img.shields.io/github/license/[TON_USER]/[TON_REPO])](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/ALEMDJOU/DollPhelia?style=social)](https://github.com/ALEMDJOU/DollPhelia/stargazers)
 [![Dolibarr](https://img.shields.io/badge/Dolibarr-22.0.5-6c2eb5)](https://www.dolibarr.org/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](ophelia-service/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contribuer)
 
 Module d'extraction automatique de documents pour [Dolibarr ERP/CRM](https://www.dolibarr.org/), propulsé par un microservice Python (OCR + IA).
 
-<!-- [Remplace par un GIF de démo : upload -> traitement -> validation -> export] -->
-<img src="[LIEN_VERS_TON_GIF_DE_DEMO]" alt="Démo Ophélia" width="720"/>
-
-[Démo](#quick-start) · [Fonctionnalités](#fonctionnalités) · [Installation](#quick-start) · [Contribuer](#contribuer) · [Signaler un bug]([LIEN_ISSUES])
+[Démo](#quick-start) · [Fonctionnalités](#fonctionnalités) · [Installation](#quick-start) · [Contribuer](#contribuer) · [Signaler un bug](https://github.com/ALEMDJOU/DollPhelia/issues)
 
 </div>
 
@@ -28,17 +21,17 @@ Module d'extraction automatique de documents pour [Dolibarr ERP/CRM](https://www
 
 Ressaisir à la main les données d'une facture, d'un RIB ou d'un KBIS dans son ERP, c'est lent, répétitif et source d'erreurs. Ophélia règle ce problème directement dans Dolibarr :
 
-- **Zéro ressaisie manuelle** — le document est lu, apparié à un template et ses champs sont extraits automatiquement.
-- **Triple stratégie d'extraction** — ancrage spatial déterministe (rapide, explicable), repli sur un modèle IA (LayoutLMv3), et reconnaissance d'entités nommées par règles (dates, montants, IBAN...) toujours disponible en dernier recours.
-- **L'humain garde la main** — chaque champ extrait affiche son score de confiance ; rien n'est validé sans relecture.
-- **Nativement intégré à Dolibarr** — pas d'outil externe à jongler, tout se passe dans l'ERP que vos équipes utilisent déjà.
-- **Auto-hébergé** — OCR (Tesseract) et modèle IA tournent en local, aucune donnée ne part vers un tiers.
+- **Zéro ressaisie manuelle** : le document est lu, apparié à un template et ses champs sont extraits automatiquement.
+- **Triple stratégie d'extraction** : ancrage spatial déterministe (rapide, explicable), repli sur un modèle IA (LayoutLMv3), et reconnaissance d'entités nommées par règles (dates, montants, IBAN...) toujours disponible en dernier recours.
+- **L'humain garde la main** : chaque champ extrait affiche son score de confiance ; rien n'est validé sans relecture.
+- **Nativement intégré à Dolibarr** : pas d'outil externe à jongler, tout se passe dans l'ERP que vos équipes utilisent déjà.
+- **Auto-hébergé** : OCR (Tesseract) et modèle IA tournent en local, aucune donnée ne part vers un tiers.
 
 ## Fonctionnalités
 
 - Upload de documents directement depuis Dolibarr (images, PDF, DOCX, XLSX : factures, CV, KBIS, RIB, ...)
 - Téléchargement et prévisualisation des documents depuis leur fiche
-- Templates configurables — définissez des ancres textuelles et des vecteurs spatiaux par type de document, avec gestion de version et template par défaut par type
+- Templates configurables, définissez des ancres textuelles et des vecteurs spatiaux par type de document, avec gestion de version et template par défaut par type
 - Test d'un template sur un document réel avant de le mettre en production, sans rien enregistrer
 - OCR et appariement automatique contre vos templates actifs, avec score de correspondance
 - Extraction spatiale, IA (LayoutLMv3) ou NER par règles, selon ce qui est disponible et pertinent pour le document
@@ -52,8 +45,8 @@ Ressaisir à la main les données d'une facture, d'un RIB ou d'un KBIS dans son 
 
 ```
 DollPhelia/
-├── DolibarrFofack/htdocs/custom/ophelia/   # Module Dolibarr (PHP) — UI, BDD, orchestration
-└── ophelia-service/                        # Microservice Python (FastAPI) — OCR, matching, extraction IA/NER
+├── DolibarrFofack/htdocs/custom/ophelia/   # Module Dolibarr (PHP), UI, BDD, orchestration
+└── ophelia-service/                        # Microservice Python (FastAPI), OCR, matching, extraction IA/NER
 ```
 
 Le module PHP ne fait aucun traitement d'image ou d'OCR lui-même : il pilote l'upload, la persistance et la validation, et délègue tout le calcul au microservice via une API REST.
@@ -65,11 +58,11 @@ Le module PHP ne fait aucun traitement d'image ou d'OCR lui-même : il pilote l'
 cd ophelia-service && pip install -r requirements.txt && uvicorn app.main:app --port 8000
 
 # 2. Copiez le module dans votre instance Dolibarr puis activez-le
-cp -r DolibarrFofack/htdocs/custom/ophelia [VOTRE_DOLIBARR]/htdocs/custom/
+cp -r DolibarrFofack/htdocs/custom/ophelia <chemin-vers-dolibarr>/htdocs/custom/
 # -> Configuration > Modules > Ophélia > Activer
 ```
 
-> Prérequis : PHP 8.x + MariaDB (Dolibarr 22.0.5), Python 3.11, [Tesseract OCR](https://github.com/tesseract-ocr/tesseract). Redis/Celery sont optionnels — sans eux, le module bascule automatiquement en traitement synchrone.
+> Prérequis : PHP 8.x + MariaDB (Dolibarr 22.0.5), Python 3.11, [Tesseract OCR](https://github.com/tesseract-ocr/tesseract). Redis/Celery sont optionnels, sans eux, le module bascule automatiquement en traitement synchrone.
 
 ## Utilisation
 
@@ -100,7 +93,6 @@ Les contributions sont les bienvenues, petites ou grandes.
 3. Commitez vos changements
 4. Ouvrez une Pull Request
 
-Consultez [CONTRIBUTING.md]([LIEN_CONTRIBUTING]) pour les détails (à créer si absent).
 
 ## Roadmap
 
@@ -110,10 +102,10 @@ Consultez [CONTRIBUTING.md]([LIEN_CONTRIBUTING]) pour les détails (à créer si
 - [ ] Support multi-pages avancé (documents composites)
 - [ ] Connecteurs d'export vers des modules Dolibarr tiers (factures fournisseurs, notes de frais...)
 
-Une idée à ajouter ? [Ouvrez une issue]([LIEN_ISSUES]).
+Une idée à ajouter ? [Ouvrez une issue](https://github.com/ALEMDJOU/DollPhelia/issues).
 
 <div align="center">
 
-Construit autour de <a href="https://www.dolibarr.org/">Dolibarr</a> — projet initialement né dans le cadre d'un Stage Pré-ingénieur à Stevo Digital (ENSPY, Yaoundé, Cameroun).
+Construit autour de <a href="https://www.dolibarr.org/">Dolibarr</a>. Projet initialement né dans le cadre d'un Stage Pré-ingénieur à Stevo Digital (ENSPY, Yaoundé, Cameroun).
 
 </div>
